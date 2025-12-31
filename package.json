@@ -1,0 +1,16 @@
+{
+  "name": "cdmenu",
+  "version": "1.0.0",
+  "description": "Bitbucket Pipeline Status Monitor",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2"
+  }
+}

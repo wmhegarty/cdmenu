@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>cdMenu Settings</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>cdMenu</h1>
+            <div id="status-indicator" class="status-gray"></div>
+        </header>
+
+        <main>
+            <!-- Authentication Section -->
+            <section id="auth-section" class="card">
+                <h2>Bitbucket Authentication</h2>
+                <form id="auth-form">
+                    <div class="form-group">
+                        <label for="username">Email Address</label>
+                        <input type="email" id="username" placeholder="Your Atlassian account email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="app-password">API Token</label>
+                        <input type="password" id="app-password" placeholder="Your Bitbucket API token" required>
+                        <small>
+                            <a href="#" id="create-password-link">Create API Token</a>
+                            (requires Pipelines:Read + Repositories:Read)
+                        </small>
+                    </div>
+                    <button type="submit" id="save-auth-btn">
+                        <span class="btn-text">Save Credentials</span>
+                        <span class="btn-loading" style="display:none;">Validating...</span>
+                    </button>
+                </form>
+                <div id="auth-status" class="status-message"></div>
+            </section>
+
+            <!-- Pipeline Selection Section -->
+            <section id="pipelines-section" class="card">
+                <h2>Monitored Pipelines</h2>
+
+                <div id="pipeline-selector">
+                    <div class="form-group">
+                        <label for="workspace-select">Workspace</label>
+                        <select id="workspace-select" disabled>
+                            <option value="">Select Workspace</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="project-select">Project</label>
+                        <select id="project-select" disabled>
+                            <option value="">Select Project</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="repo-select">Repository</label>
+                        <div class="form-row">
+                            <select id="repo-select" disabled>
+                                <option value="">Select Repository</option>
+                            </select>
+                            <button type="button" id="add-pipeline-btn" disabled>Add</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="monitored-list">
+                    <h3>Currently Monitoring</h3>
+                    <ul id="pipeline-list">
+                        <li class="empty">No pipelines monitored</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Settings Section -->
+            <section id="settings-section" class="card">
+                <h2>Settings</h2>
+                <div class="form-group">
+                    <label for="polling-interval">Check Interval (seconds)</label>
+                    <div class="form-row">
+                        <input type="number" id="polling-interval" min="30" max="3600" value="60">
+                        <button type="button" id="save-settings-btn">Save</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Status Section -->
+            <section id="status-section" class="card">
+                <h2>Current Status</h2>
+                <div id="status-details">
+                    <p class="loading">Checking pipelines...</p>
+                </div>
+                <button type="button" id="refresh-btn">Refresh Now</button>
+            </section>
+        </main>
+    </div>
+
+    <script type="module" src="main.js"></script>
+</body>
+</html>

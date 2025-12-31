@@ -1,0 +1,45 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "cdMenu",
+  "version": "1.0.0",
+  "identifier": "com.cdmenu.desktop",
+  "build": {
+    "beforeDevCommand": "",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "",
+    "frontendDist": "../src"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "cdMenu Settings",
+        "label": "settings",
+        "width": 600,
+        "height": 550,
+        "resizable": true,
+        "visible": false,
+        "center": true,
+        "decorations": true,
+        "url": "index.html"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://api.bitbucket.org; style-src 'self' 'unsafe-inline'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "resources": [
+      "icons/tray-*.png"
+    ]
+  }
+}
