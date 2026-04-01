@@ -71,11 +71,13 @@ pub fn run() {
             commands::set_polling_interval,
             commands::get_polling_interval,
             commands::trigger_refresh,
+            commands::get_pipeline_view_pipelines,
+            commands::save_pipeline_view_pipelines,
         ])
         .on_window_event(|window, event| {
             // Hide settings window on close instead of quitting
             if let WindowEvent::CloseRequested { api, .. } = event {
-                if window.label() == "settings" {
+                if window.label() == "settings" || window.label() == "pipeline-view" {
                     api.prevent_close();
                     let _ = window.hide();
                 }

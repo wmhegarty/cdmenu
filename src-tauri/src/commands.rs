@@ -1,5 +1,5 @@
 use crate::bitbucket::{BitbucketClient, Pipeline, Project, Repository, Workspace};
-use crate::config::{AppState, Credentials, MonitoredPipeline, OverallStatus, PersistedConfig};
+use crate::config::{AppState, Credentials, MonitoredPipeline, OverallStatus, PersistedConfig, PipelineViewPipeline};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use std::sync::Arc;
 use tauri::{command, AppHandle, Emitter, Manager, State};
@@ -190,6 +190,29 @@ pub async fn trigger_refresh(app_handle: AppHandle) -> Result<(), String> {
     app_handle
         .emit("trigger-refresh", ())
         .map_err(|e: tauri::Error| e.to_string())
+}
+
+/// Get the list of pipelines shown in the pipeline view
+#[command]
+pub async fn get_pipeline_view_pipelines(
+    state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<Vec<PipelineViewPipeline>, String> {
+    let state_guard = state.lock().await;
+    Ok(state_guard.pipeline_view_pipelines.clone())
+}
+
+/// Save the list of pipelines shown in the pipeline view
+#[command]
+pub async fn save_pipeline_view_pipelines(
+    app_handle: AppHandle,
+    state: State<'_, Arc<Mutex<AppState>>>,
+    pipelines: Vec<PipelineViewPipeline>,
+) -> Result<(), String> {
+    {
+        let mut state_guard = state.lock().await;
+        state_guard.pipeline_view_pipelines = pipelines;
+    }
+    save_config_helper(&app_handle, &state).await
 }
 
 // Helper: Save password to secure file (base64 obfuscated for MVP)
