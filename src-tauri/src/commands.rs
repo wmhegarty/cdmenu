@@ -1,5 +1,5 @@
 use crate::bitbucket::{BitbucketClient, Pipeline, Project, Repository, Workspace};
-use crate::config::{AppState, Credentials, MonitoredPipeline, OverallStatus, PersistedConfig, PipelineViewPipeline};
+use crate::config::{AppState, Credentials, MonitoredPipeline, OverallStatus, PersistedConfig, PipelineViewPipeline, PipelineViewData, PipelineStepView, StepViewState};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use std::sync::Arc;
 use tauri::{command, AppHandle, Emitter, Manager, State};
@@ -213,6 +213,104 @@ pub async fn save_pipeline_view_pipelines(
         state_guard.pipeline_view_pipelines = pipelines;
     }
     save_config_helper(&app_handle, &state).await
+}
+
+/// Fetch step-level data for pipelines in the pipeline view (on-demand)
+#[command]
+pub async fn get_pipeline_view_data(
+    app_handle: AppHandle,
+    state: State<'_, Arc<Mutex<AppState>>>,
+) -> Result<Vec<PipelineViewData>, String> {
+    let (username, view_pipelines) = {
+        let state_guard = state.lock().await;
+        let username = state_guard.credentials.as_ref()
+            .map(|c| c.username.clone())
+            .ok_or("No credentials configured")?;
+        (username, state_guard.pipeline_view_pipelines.clone())
+    };
+
+    if view_pipelines.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let app_password = retrieve_password(&app_handle)?
+        .ok_or("No app password found")?;
+
+    let client = BitbucketClient::new(&username, &app_password);
+    let mut results = Vec::new();
+
+    for vp in &view_pipelines {
+        let latest = match client
+            .get_latest_pipeline(&vp.workspace, &vp.repo_slug, vp.branch.as_deref())
+            .await
+        {
+            Ok(Some(pipeline)) => pipeline,
+            Ok(None) => continue,
+            Err(e) => {
+                log::error!("Failed to get pipeline for view {}/{}: {}", vp.workspace, vp.repo_slug, e);
+                continue;
+            }
+        };
+
+        let steps = match client
+            .get_pipeline_steps(&vp.workspace, &vp.repo_slug, &latest.uuid)
+            .await
+        {
+            Ok(steps) => steps,
+            Err(e) => {
+                log::error!("Failed to get steps for {}/{}: {}", vp.workspace, vp.repo_slug, e);
+                continue;
+            }
+        };
+
+        let step_views: Vec<PipelineStepView> = steps
+            .iter()
+            .map(|step| {
+                let state = match step.state.as_ref().and_then(|s| s.name.as_deref()) {
+                    Some("COMPLETED") => {
+                        if let Some(state_type) = step.state.as_ref().and_then(|s| s.state_type.as_deref()) {
+                            if state_type.contains("error") || state_type.contains("failed") {
+                                StepViewState::Failed
+                            } else {
+                                StepViewState::Completed
+                            }
+                        } else {
+                            StepViewState::Completed
+                        }
+                    }
+                    Some("IN_PROGRESS") => StepViewState::Running,
+                    Some("PENDING") => {
+                        if let Some(state_type) = step.state.as_ref().and_then(|s| s.state_type.as_deref()) {
+                            if state_type.contains("paused") || state_type.contains("halted") {
+                                StepViewState::Paused
+                            } else {
+                                StepViewState::Pending
+                            }
+                        } else {
+                            StepViewState::Pending
+                        }
+                    }
+                    _ => StepViewState::Pending,
+                };
+
+                PipelineStepView {
+                    name: step.name.clone().unwrap_or_else(|| "Step".to_string()),
+                    state,
+                }
+            })
+            .collect();
+
+        results.push(PipelineViewData {
+            workspace: vp.workspace.clone(),
+            repo_slug: vp.repo_slug.clone(),
+            repo_name: vp.repo_name.clone(),
+            branch: latest.target.ref_name.clone(),
+            build_number: latest.build_number,
+            steps: step_views,
+        });
+    }
+
+    Ok(results)
 }
 
 // Helper: Save password to secure file (base64 obfuscated for MVP)

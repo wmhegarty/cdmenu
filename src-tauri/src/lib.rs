@@ -73,6 +73,7 @@ pub fn run() {
             commands::trigger_refresh,
             commands::get_pipeline_view_pipelines,
             commands::save_pipeline_view_pipelines,
+            commands::get_pipeline_view_data,
         ])
         .on_window_event(|window, event| {
             // Hide settings window on close instead of quitting

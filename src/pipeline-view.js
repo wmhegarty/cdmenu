@@ -19,12 +19,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     populateDropdown();
     setupEventListeners();
     listenForUpdates();
-    // Trigger a refresh to get initial data
-    try {
-        await invoke('trigger_refresh');
-    } catch (e) {
-        console.error('Failed to trigger initial refresh:', e);
-    }
+    // Fetch step data immediately
+    await fetchViewData();
 });
 
 async function loadViewPipelines() {
@@ -84,8 +80,8 @@ function setupEventListeners() {
             await invoke('save_pipeline_view_pipelines', { pipelines: viewPipelines });
             populateDropdown();
             renderPipelines();
-            // Trigger refresh to get step data for the new pipeline
-            await invoke('trigger_refresh');
+            // Fetch step data for the new pipeline
+            await fetchViewData();
         } catch (e) {
             console.error('Failed to save:', e);
             viewPipelines.pop();
@@ -101,6 +97,16 @@ async function removePipeline(index) {
         renderPipelines();
     } catch (e) {
         console.error('Failed to remove:', e);
+    }
+}
+
+async function fetchViewData() {
+    if (viewPipelines.length === 0) return;
+    try {
+        latestViewData = await invoke('get_pipeline_view_data');
+        renderPipelines();
+    } catch (e) {
+        console.error('Failed to fetch view data:', e);
     }
 }
 
