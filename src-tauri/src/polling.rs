@@ -1,5 +1,5 @@
 use crate::bitbucket::BitbucketClient;
-use crate::config::{AppState, MonitoredPipeline, OverallStatus, PipelineState, PipelineStatusInfo};
+use crate::config::{AppState, MonitoredPipeline, OverallStatus, PipelineState, PipelineStatusInfo, PipelineViewData, PipelineViewPipeline, PipelineStepView, StepViewState};
 use crate::tray::{update_tray_icon, update_tray_menu, update_tray_tooltip, TrayStatus};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use std::sync::Arc;
@@ -202,6 +202,23 @@ async fn check_pipelines_once(app_handle: &AppHandle) {
 
     // Emit event to frontend
     let _ = app_handle.emit("status-updated", &status);
+
+    // Fetch and emit pipeline view data if any pipelines are selected
+    let view_pipelines = {
+        let state: tauri::State<Arc<Mutex<AppState>>> = app_handle.state();
+        let state_guard = state.lock().await;
+        state_guard.pipeline_view_pipelines.clone()
+    };
+
+    if !view_pipelines.is_empty() {
+        let view_data = fetch_pipeline_view_data(
+            &credentials.username,
+            &app_password,
+            &view_pipelines,
+        )
+        .await;
+        let _ = app_handle.emit("pipeline-view-updated", &view_data);
+    }
 }
 
 /// Check all monitored pipelines and return aggregated status
@@ -323,6 +340,92 @@ async fn check_all_pipelines(
 
     let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
     OverallStatus::new(pipeline_statuses, timestamp)
+}
+
+/// Fetch step-level data for pipelines in the pipeline view
+async fn fetch_pipeline_view_data(
+    username: &str,
+    app_password: &str,
+    view_pipelines: &[PipelineViewPipeline],
+) -> Vec<PipelineViewData> {
+    let client = BitbucketClient::new(username, app_password);
+    let mut results = Vec::new();
+
+    for vp in view_pipelines {
+        let latest = match client
+            .get_latest_pipeline(&vp.workspace, &vp.repo_slug, vp.branch.as_deref())
+            .await
+        {
+            Ok(Some(pipeline)) => pipeline,
+            Ok(None) => {
+                log::debug!("No pipeline found for {}/{} in view", vp.workspace, vp.repo_slug);
+                continue;
+            }
+            Err(e) => {
+                log::error!("Failed to get pipeline for view {}/{}: {}", vp.workspace, vp.repo_slug, e);
+                continue;
+            }
+        };
+
+        let steps = match client
+            .get_pipeline_steps(&vp.workspace, &vp.repo_slug, &latest.uuid)
+            .await
+        {
+            Ok(steps) => steps,
+            Err(e) => {
+                log::error!("Failed to get steps for {}/{}: {}", vp.workspace, vp.repo_slug, e);
+                continue;
+            }
+        };
+
+        let step_views: Vec<PipelineStepView> = steps
+            .iter()
+            .map(|step| {
+                let state = match step.state.as_ref().and_then(|s| s.name.as_deref()) {
+                    Some("COMPLETED") => {
+                        if let Some(state_type) = step.state.as_ref().and_then(|s| s.state_type.as_deref()) {
+                            if state_type.contains("error") || state_type.contains("failed") {
+                                StepViewState::Failed
+                            } else {
+                                StepViewState::Completed
+                            }
+                        } else {
+                            StepViewState::Completed
+                        }
+                    }
+                    Some("IN_PROGRESS") => StepViewState::Running,
+                    Some("PENDING") => {
+                        if let Some(state_type) = step.state.as_ref().and_then(|s| s.state_type.as_deref()) {
+                            if state_type.contains("paused") || state_type.contains("halted") {
+                                StepViewState::Paused
+                            } else {
+                                StepViewState::Pending
+                            }
+                        } else {
+                            StepViewState::Pending
+                        }
+                    }
+                    _ => StepViewState::Pending,
+                };
+
+                PipelineStepView {
+                    name: step.name.clone().unwrap_or_else(|| "Step".to_string()),
+                    state,
+                }
+            })
+            .collect();
+
+        results.push(PipelineViewData {
+            workspace: vp.workspace.clone(),
+            repo_slug: vp.repo_slug.clone(),
+            repo_name: vp.repo_name.clone(),
+            branch: latest.target.ref_name.clone(),
+            build_number: latest.build_number,
+            steps: step_views,
+        });
+    }
+
+    results
 }
 
 /// Get the app password from config file
