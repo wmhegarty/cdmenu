@@ -7,6 +7,7 @@ pub struct AppState {
     pub monitored_pipelines: Vec<MonitoredPipeline>,
     pub polling_interval_seconds: u64,
     pub last_status: Option<OverallStatus>,
+    pub pipeline_view_pipelines: Vec<PipelineViewPipeline>,
 }
 
 /// User credentials (password stored in Stronghold)
@@ -35,6 +36,43 @@ pub enum PipelineState {
     InProgress,
     Paused,
     Unknown,
+}
+
+/// Identifies a pipeline to show in the Pipeline View window
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct PipelineViewPipeline {
+    pub workspace: String,
+    pub repo_slug: String,
+    pub repo_name: String,
+    pub branch: Option<String>,
+}
+
+/// Step-level state for pipeline view rendering
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum StepViewState {
+    Completed,
+    Running,
+    Paused,
+    Failed,
+    Pending,
+}
+
+/// A single step in the pipeline view
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PipelineStepView {
+    pub name: String,
+    pub state: StepViewState,
+}
+
+/// Full pipeline data for the pipeline view window
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PipelineViewData {
+    pub workspace: String,
+    pub repo_slug: String,
+    pub repo_name: String,
+    pub branch: Option<String>,
+    pub build_number: u32,
+    pub steps: Vec<PipelineStepView>,
 }
 
 /// Individual pipeline status info
@@ -80,6 +118,8 @@ pub struct PersistedConfig {
     pub username: Option<String>,
     pub monitored_pipelines: Vec<MonitoredPipeline>,
     pub polling_interval_seconds: u64,
+    #[serde(default)]
+    pub pipeline_view_pipelines: Vec<PipelineViewPipeline>,
 }
 
 impl AppState {
@@ -89,6 +129,7 @@ impl AppState {
             monitored_pipelines: Vec::new(),
             polling_interval_seconds: 60,
             last_status: None,
+            pipeline_view_pipelines: Vec::new(),
         }
     }
 
@@ -98,6 +139,7 @@ impl AppState {
             username: self.credentials.as_ref().map(|c| c.username.clone()),
             monitored_pipelines: self.monitored_pipelines.clone(),
             polling_interval_seconds: self.polling_interval_seconds,
+            pipeline_view_pipelines: self.pipeline_view_pipelines.clone(),
         }
     }
 
@@ -112,6 +154,7 @@ impl AppState {
                 60
             },
             last_status: None,
+            pipeline_view_pipelines: config.pipeline_view_pipelines,
         }
     }
 }
