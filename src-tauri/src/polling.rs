@@ -80,7 +80,11 @@ async fn check_pipelines_once(app_handle: &AppHandle) {
 
     // Update tray based on status
     if status.is_healthy {
-        update_tray_icon(app_handle, TrayStatus::Green);
+        if status.in_progress_count > 0 {
+            update_tray_icon(app_handle, TrayStatus::Orange);
+        } else {
+            update_tray_icon(app_handle, TrayStatus::Green);
+        }
 
         let mut tooltip = format!(
             "cdMenu\n{} pipeline(s) healthy",

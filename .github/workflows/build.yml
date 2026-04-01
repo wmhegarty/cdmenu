@@ -8,6 +8,9 @@
       branches: [main]
     workflow_dispatch:
 
+  permissions:
+    contents: write
+
   jobs:
     build:
       strategy:
@@ -46,6 +49,11 @@
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           with:
             args: --target ${{ matrix.target }}
+            tagName: ${{ github.ref_name }}
+            releaseName: "cdMenu ${{ github.ref_name }}"
+            releaseBody: "See the assets below to download for your platform."
+            releaseDraft: false
+            prerelease: false
 
         - name: Upload artifacts (macOS)
           if: matrix.platform == 'macos-latest'

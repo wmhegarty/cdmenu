@@ -17,6 +17,7 @@ pub const TRAY_ID: &str = "main";
 const ICON_GREEN: &[u8] = include_bytes!("../icons/tray-green.png");
 const ICON_RED: &[u8] = include_bytes!("../icons/tray-red.png");
 const ICON_GRAY: &[u8] = include_bytes!("../icons/tray-gray.png");
+const ICON_ORANGE: &[u8] = include_bytes!("../icons/tray-orange.png");
 
 // Menu icons (smaller versions)
 const MENU_ICON_GREEN: &[u8] = include_bytes!("../icons/menu-green.png");
@@ -33,6 +34,8 @@ pub enum TrayStatus {
     Red,
     /// Loading or no pipelines configured (gray)
     Gray,
+    /// Build in progress, no failures (orange)
+    Orange,
 }
 
 /// Build the system tray with menu
@@ -257,6 +260,7 @@ pub fn update_tray_icon(app_handle: &AppHandle, status: TrayStatus) {
             TrayStatus::Green => ICON_GREEN,
             TrayStatus::Red => ICON_RED,
             TrayStatus::Gray => ICON_GRAY,
+            TrayStatus::Orange => ICON_ORANGE,
         };
 
         if let Ok(icon) = Image::from_bytes(icon_bytes) {
