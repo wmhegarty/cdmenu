@@ -65,6 +65,13 @@ pub fn build_tray<R: Runtime>(app: &tauri::App<R>) -> Result<(), tauri::Error> {
                         let _ = window.set_focus();
                     }
                 }
+                "pipeline_view" => {
+                    log::info!("Opening pipeline view window");
+                    if let Some(window) = app.get_webview_window("pipeline-view") {
+                        let _ = window.show();
+                        let _ = window.set_focus();
+                    }
+                }
                 "quit" => {
                     log::info!("Quit requested from tray menu");
                     app.exit(0);
@@ -97,10 +104,11 @@ fn build_initial_menu<R: Runtime>(app: &tauri::App<R>) -> Result<Menu<R>, tauri:
     let status_item = MenuItem::with_id(app, "status", "Loading...", false, None::<&str>)?;
     let separator = PredefinedMenuItem::separator(app)?;
     let refresh = MenuItem::with_id(app, "refresh", "Refresh Now", true, None::<&str>)?;
+    let pipeline_view = MenuItem::with_id(app, "pipeline_view", "Pipeline View...", true, None::<&str>)?;
     let settings = MenuItem::with_id(app, "settings", "Settings...", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
 
-    Menu::with_items(app, &[&status_item, &separator, &refresh, &settings, &quit])
+    Menu::with_items(app, &[&status_item, &separator, &refresh, &pipeline_view, &settings, &quit])
 }
 
 /// Update the tray menu with current pipeline status
@@ -241,10 +249,12 @@ fn build_status_menu(app_handle: &AppHandle, status: Option<&OverallStatus>) -> 
 
     // Action items
     let refresh = MenuItem::with_id(app_handle, "refresh", "Refresh Now", true, None::<&str>)?;
+    let pipeline_view = MenuItem::with_id(app_handle, "pipeline_view", "Pipeline View...", true, None::<&str>)?;
     let settings = MenuItem::with_id(app_handle, "settings", "Settings...", true, None::<&str>)?;
     let quit = MenuItem::with_id(app_handle, "quit", "Quit", true, None::<&str>)?;
 
     items.push(Box::new(refresh));
+    items.push(Box::new(pipeline_view));
     items.push(Box::new(settings));
     items.push(Box::new(quit));
 

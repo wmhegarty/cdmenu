@@ -22,6 +22,17 @@
         "center": true,
         "decorations": true,
         "url": "index.html"
+      },
+      {
+        "title": "Pipeline View",
+        "label": "pipeline-view",
+        "width": 600,
+        "height": 400,
+        "resizable": true,
+        "visible": false,
+        "center": true,
+        "decorations": true,
+        "url": "pipeline-view.html"
       }
     ],
     "security": {
