@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pipeline View</title>
+    <link rel="stylesheet" href="pipeline-view.css">
+</head>
+<body>
+    <div id="app">
+        <div id="pipeline-selector">
+            <select id="pipeline-select">
+                <option value="">Select a pipeline to add...</option>
+            </select>
+            <button type="button" id="add-btn" disabled>Add</button>
+        </div>
+
+        <div id="pipeline-container">
+            <p id="empty-message">No pipelines added. Use the dropdown above to add one.</p>
+        </div>
+    </div>
+
+    <script type="module" src="pipeline-view.js"></script>
+</body>
+</html>
