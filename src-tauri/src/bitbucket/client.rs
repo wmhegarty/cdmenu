@@ -135,6 +135,58 @@ impl BitbucketClient {
         Ok(response.values)
     }
 
+    /// Trigger a manual/paused pipeline step
+    pub async fn trigger_pipeline_step(
+        &self,
+        workspace: &str,
+        repo_slug: &str,
+        pipeline_uuid: &str,
+        step_uuid: &str,
+    ) -> Result<(), BitbucketError> {
+        // Bitbucket UUIDs may or may not have {} braces - ensure they do
+        let p_uuid = if pipeline_uuid.starts_with('{') {
+            pipeline_uuid.to_string()
+        } else {
+            format!("{{{}}}", pipeline_uuid)
+        };
+        let s_uuid = if step_uuid.starts_with('{') {
+            step_uuid.to_string()
+        } else {
+            format!("{{{}}}", step_uuid)
+        };
+
+        let url = format!(
+            "{}/repositories/{}/{}/pipelines/{}/steps/{}/trigger",
+            BITBUCKET_API_BASE, workspace, repo_slug, p_uuid, s_uuid
+        );
+        log::info!("Triggering pipeline step: PUT {}", url);
+
+        let response = self
+            .client
+            .post(&url)
+            .header(header::AUTHORIZATION, &self.auth_header)
+            .header(header::CONTENT_TYPE, "application/json")
+            .header(header::ACCEPT, "application/json")
+            .body(r#"{}"#)
+            .send()
+            .await?;
+
+        let status_code = response.status().as_u16();
+        let body = response.text().await.unwrap_or_default();
+        log::info!("Trigger step response: {} {}", status_code, body);
+
+        match status_code {
+            200..=299 => Ok(()),
+            401 => Err(BitbucketError::AuthenticationFailed),
+            429 => Err(BitbucketError::RateLimited),
+            404 => Err(BitbucketError::NotFound(format!("{}: {}", url, body))),
+            _ => Err(BitbucketError::ApiError(format!(
+                "Status {}: {}",
+                status_code, body
+            ))),
+        }
+    }
+
     /// Validate credentials by attempting to fetch workspaces
     pub async fn validate_credentials(&self) -> Result<bool, BitbucketError> {
         match self.get_workspaces().await {

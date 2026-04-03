@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "cdMenu",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "identifier": "com.cdmenu.desktop",
   "build": {
     "beforeDevCommand": "",
@@ -26,8 +26,8 @@
       {
         "title": "Pipeline View",
         "label": "pipeline-view",
-        "width": 600,
-        "height": 400,
+        "width": 800,
+        "height": 300,
         "resizable": true,
         "visible": false,
         "center": true,

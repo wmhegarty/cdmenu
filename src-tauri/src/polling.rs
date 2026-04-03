@@ -378,24 +378,33 @@ async fn fetch_pipeline_view_data(
             }
         };
 
-        let step_views: Vec<PipelineStepView> = steps
-            .iter()
-            .map(|step| {
-                let state = match step.state.as_ref().and_then(|s| s.name.as_deref()) {
+        let mut step_views: Vec<PipelineStepView> = Vec::new();
+        let mut seen_failure = false;
+        let mut seen_first_pending = false;
+        let pipeline_is_paused = latest.is_paused();
+        for step in &steps {
+            let state = if seen_failure {
+                StepViewState::Pending
+            } else {
+                match step.state.as_ref().and_then(|s| s.name.as_deref()) {
                     Some("COMPLETED") => {
-                        if let Some(state_type) = step.state.as_ref().and_then(|s| s.state_type.as_deref()) {
-                            if state_type.contains("error") || state_type.contains("failed") {
+                        let result_name = step.state.as_ref()
+                            .and_then(|s| s.result.as_ref())
+                            .and_then(|r| r.name.as_deref());
+                        match result_name {
+                            Some("FAILED") | Some("ERROR") | Some("STOPPED") => {
+                                seen_failure = true;
                                 StepViewState::Failed
-                            } else {
-                                StepViewState::Completed
                             }
-                        } else {
-                            StepViewState::Completed
+                            _ => StepViewState::Completed,
                         }
                     }
                     Some("IN_PROGRESS") => StepViewState::Running,
                     Some("PENDING") => {
-                        if let Some(state_type) = step.state.as_ref().and_then(|s| s.state_type.as_deref()) {
+                        if !seen_first_pending && pipeline_is_paused {
+                            seen_first_pending = true;
+                            StepViewState::Paused
+                        } else if let Some(state_type) = step.state.as_ref().and_then(|s| s.state_type.as_deref()) {
                             if state_type.contains("paused") || state_type.contains("halted") {
                                 StepViewState::Paused
                             } else {
@@ -406,14 +415,14 @@ async fn fetch_pipeline_view_data(
                         }
                     }
                     _ => StepViewState::Pending,
-                };
-
-                PipelineStepView {
-                    name: step.name.clone().unwrap_or_else(|| "Step".to_string()),
-                    state,
                 }
-            })
-            .collect();
+            };
+            step_views.push(PipelineStepView {
+                uuid: step.uuid.clone(),
+                name: step.name.clone().unwrap_or_else(|| "Step".to_string()),
+                state,
+            });
+        }
 
         results.push(PipelineViewData {
             workspace: vp.workspace.clone(),
@@ -421,6 +430,8 @@ async fn fetch_pipeline_view_data(
             repo_name: vp.repo_name.clone(),
             branch: latest.target.ref_name.clone(),
             build_number: latest.build_number,
+            pipeline_uuid: latest.uuid.clone(),
+            commit_hash: latest.target.commit.as_ref().and_then(|c| c.hash.clone()),
             steps: step_views,
         });
     }

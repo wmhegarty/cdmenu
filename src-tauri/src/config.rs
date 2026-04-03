@@ -60,6 +60,7 @@ pub enum StepViewState {
 /// A single step in the pipeline view
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PipelineStepView {
+    pub uuid: String,
     pub name: String,
     pub state: StepViewState,
 }
@@ -72,6 +73,8 @@ pub struct PipelineViewData {
     pub repo_name: String,
     pub branch: Option<String>,
     pub build_number: u32,
+    pub pipeline_uuid: String,
+    pub commit_hash: Option<String>,
     pub steps: Vec<PipelineStepView>,
 }
 

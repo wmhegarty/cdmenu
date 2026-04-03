@@ -215,6 +215,12 @@ pub async fn save_pipeline_view_pipelines(
     save_config_helper(&app_handle, &state).await
 }
 
+/// Open a URL in the default browser
+#[command]
+pub async fn open_url(url: String) -> Result<(), String> {
+    open::that(&url).map_err(|e| format!("Failed to open URL: {}", e))
+}
+
 /// Fetch step-level data for pipelines in the pipeline view (on-demand)
 #[command]
 pub async fn get_pipeline_view_data(
@@ -263,24 +269,35 @@ pub async fn get_pipeline_view_data(
             }
         };
 
-        let step_views: Vec<PipelineStepView> = steps
-            .iter()
-            .map(|step| {
-                let state = match step.state.as_ref().and_then(|s| s.name.as_deref()) {
+        let mut step_views: Vec<PipelineStepView> = Vec::new();
+        let mut seen_failure = false;
+        let mut seen_first_pending = false;
+        // Check if the overall pipeline is paused (waiting for manual trigger)
+        let pipeline_is_paused = latest.is_paused();
+        for step in &steps {
+            let state = if seen_failure {
+                StepViewState::Pending
+            } else {
+                match step.state.as_ref().and_then(|s| s.name.as_deref()) {
                     Some("COMPLETED") => {
-                        if let Some(state_type) = step.state.as_ref().and_then(|s| s.state_type.as_deref()) {
-                            if state_type.contains("error") || state_type.contains("failed") {
+                        let result_name = step.state.as_ref()
+                            .and_then(|s| s.result.as_ref())
+                            .and_then(|r| r.name.as_deref());
+                        match result_name {
+                            Some("FAILED") | Some("ERROR") | Some("STOPPED") => {
+                                seen_failure = true;
                                 StepViewState::Failed
-                            } else {
-                                StepViewState::Completed
                             }
-                        } else {
-                            StepViewState::Completed
+                            _ => StepViewState::Completed,
                         }
                     }
                     Some("IN_PROGRESS") => StepViewState::Running,
                     Some("PENDING") => {
-                        if let Some(state_type) = step.state.as_ref().and_then(|s| s.state_type.as_deref()) {
+                        // First pending step on a paused pipeline = waiting for approval
+                        if !seen_first_pending && pipeline_is_paused {
+                            seen_first_pending = true;
+                            StepViewState::Paused
+                        } else if let Some(state_type) = step.state.as_ref().and_then(|s| s.state_type.as_deref()) {
                             if state_type.contains("paused") || state_type.contains("halted") {
                                 StepViewState::Paused
                             } else {
@@ -291,14 +308,14 @@ pub async fn get_pipeline_view_data(
                         }
                     }
                     _ => StepViewState::Pending,
-                };
-
-                PipelineStepView {
-                    name: step.name.clone().unwrap_or_else(|| "Step".to_string()),
-                    state,
                 }
-            })
-            .collect();
+            };
+            step_views.push(PipelineStepView {
+                uuid: step.uuid.clone(),
+                name: step.name.clone().unwrap_or_else(|| "Step".to_string()),
+                state,
+            });
+        }
 
         results.push(PipelineViewData {
             workspace: vp.workspace.clone(),
@@ -306,11 +323,40 @@ pub async fn get_pipeline_view_data(
             repo_name: vp.repo_name.clone(),
             branch: latest.target.ref_name.clone(),
             build_number: latest.build_number,
+            pipeline_uuid: latest.uuid.clone(),
+            commit_hash: latest.target.commit.as_ref().and_then(|c| c.hash.clone()),
             steps: step_views,
         });
     }
 
     Ok(results)
+}
+
+/// Trigger a paused/manual pipeline step
+#[command]
+pub async fn trigger_pipeline_step(
+    app_handle: AppHandle,
+    state: State<'_, Arc<Mutex<AppState>>>,
+    workspace: String,
+    repo_slug: String,
+    pipeline_uuid: String,
+    step_uuid: String,
+) -> Result<(), String> {
+    let username = {
+        let state_guard = state.lock().await;
+        state_guard.credentials.as_ref()
+            .map(|c| c.username.clone())
+            .ok_or("No credentials configured")?
+    };
+
+    let app_password = retrieve_password(&app_handle)?
+        .ok_or("No app password found")?;
+
+    let client = BitbucketClient::new(&username, &app_password);
+    client
+        .trigger_pipeline_step(&workspace, &repo_slug, &pipeline_uuid, &step_uuid)
+        .await
+        .map_err(|e| format!("{}", e))
 }
 
 // Helper: Save password to secure file (base64 obfuscated for MVP)

@@ -79,6 +79,13 @@ pub struct PipelineResult {
 pub struct PipelineTarget {
     pub ref_type: Option<String>,
     pub ref_name: Option<String>,
+    pub commit: Option<PipelineCommit>,
+}
+
+/// Commit info on a pipeline target
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct PipelineCommit {
+    pub hash: Option<String>,
 }
 
 /// Pipeline step (individual stage in a pipeline)
@@ -95,6 +102,15 @@ pub struct StepState {
     pub name: Option<String>,
     #[serde(rename = "type")]
     pub state_type: Option<String>,
+    pub result: Option<StepResult>,
+}
+
+/// Result of a completed pipeline step
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct StepResult {
+    pub name: Option<String>,
+    #[serde(rename = "type")]
+    pub result_type: Option<String>,
 }
 
 impl PipelineStep {

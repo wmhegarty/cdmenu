@@ -1,6 +1,6 @@
 {
   "name": "cdmenu",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Bitbucket Pipeline Status Monitor",
   "scripts": {
     "tauri": "tauri",
