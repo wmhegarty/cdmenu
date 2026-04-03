@@ -28,12 +28,12 @@
 
       steps:
         - name: Checkout
-          uses: actions/checkout@v4
+          uses: actions/checkout@v5
 
         - name: Setup Node
-          uses: actions/setup-node@v4
+          uses: actions/setup-node@v5
           with:
-            node-version: 20
+            node-version: 22
 
         - name: Install Rust
           uses: dtolnay/rust-toolchain@stable
@@ -51,20 +51,35 @@
             args: --target ${{ matrix.target }}
             tagName: ${{ github.ref_name }}
             releaseName: "cdMenu ${{ github.ref_name }}"
-            releaseBody: "See the assets below to download for your platform."
+            releaseBody: |
+              ## What's New
+
+              - **Commit hash in Pipeline View** — each pipeline row now shows the git short hash, clickable to open the commit in Bitbucket
+              - **Pipeline step trigger support** — manual/paused pipeline steps can be triggered directly
+              - **Improved Pipeline View UI** — better step state visualization and styling
+              - **`open_url` command** — opens links in the default browser from the app
+
+              ## Downloads
+
+              See the assets below to download for your platform.
+
+              > **macOS note:** The app is not yet code-signed. After installing, run:
+              > ```bash
+              > xattr -cr /Applications/cdMenu.app
+              > ```
             releaseDraft: false
             prerelease: false
 
         - name: Upload artifacts (macOS)
           if: matrix.platform == 'macos-latest'
-          uses: actions/upload-artifact@v4
+          uses: actions/upload-artifact@v5
           with:
             name: cdMenu-${{ matrix.target }}
             path: src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
 
         - name: Upload artifacts (Windows)
           if: matrix.platform == 'windows-latest'
-          uses: actions/upload-artifact@v4
+          uses: actions/upload-artifact@v5
           with:
             name: cdMenu-${{ matrix.target }}
             path: src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*.exe
