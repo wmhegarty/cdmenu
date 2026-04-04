@@ -54,10 +54,9 @@
             releaseBody: |
               ## What's New
 
-              - **Commit hash in Pipeline View** — each pipeline row now shows the git short hash, clickable to open the commit in Bitbucket
-              - **Pipeline step trigger support** — manual/paused pipeline steps can be triggered directly
-              - **Improved Pipeline View UI** — better step state visualization and styling
-              - **`open_url` command** — opens links in the default browser from the app
+              - **Fix Bitbucket API deprecation (CHANGE-2770)** — migrated workspace listing from deprecated `GET /2.0/workspaces` to new `GET /2.0/user/workspaces` endpoint, fixing 410 errors during credential save
+              - **Improved credential validation** — now uses `GET /2.0/user` for auth checks instead of workspace listing, avoiding deprecated cross-workspace APIs
+              - **Resilient workspace type handling** — workspace `name` field is now optional, matching the new API response format
 
               ## Downloads
 

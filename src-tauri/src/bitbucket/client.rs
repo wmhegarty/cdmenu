@@ -2,7 +2,7 @@ use base64::{engine::general_purpose::STANDARD, Engine};
 use reqwest::{header, Client};
 use thiserror::Error;
 
-use super::types::{PaginatedResponse, Pipeline, PipelineStep, Project, Repository, Workspace};
+use super::types::{PaginatedResponse, Pipeline, PipelineStep, Project, Repository, Workspace, WorkspaceMembership};
 
 const BITBUCKET_API_BASE: &str = "https://api.bitbucket.org/2.0";
 
@@ -45,9 +45,9 @@ impl BitbucketClient {
 
     /// Get all workspaces accessible to the authenticated user
     pub async fn get_workspaces(&self) -> Result<Vec<Workspace>, BitbucketError> {
-        let url = format!("{}/workspaces?pagelen=100", BITBUCKET_API_BASE);
-        let response: PaginatedResponse<Workspace> = self.get(&url).await?;
-        Ok(response.values)
+        let url = format!("{}/user/workspaces?pagelen=100", BITBUCKET_API_BASE);
+        let response: PaginatedResponse<WorkspaceMembership> = self.get(&url).await?;
+        Ok(response.values.into_iter().map(|m| m.workspace).collect())
     }
 
     /// Get all projects in a workspace
@@ -187,9 +187,10 @@ impl BitbucketClient {
         }
     }
 
-    /// Validate credentials by attempting to fetch workspaces
+    /// Validate credentials by fetching the authenticated user profile
     pub async fn validate_credentials(&self) -> Result<bool, BitbucketError> {
-        match self.get_workspaces().await {
+        let url = format!("{}/user", BITBUCKET_API_BASE);
+        match self.get::<serde_json::Value>(&url).await {
             Ok(_) => Ok(true),
             Err(BitbucketError::AuthenticationFailed) => Ok(false),
             Err(e) => Err(e),

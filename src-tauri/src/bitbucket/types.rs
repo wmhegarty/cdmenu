@@ -14,7 +14,13 @@ pub struct PaginatedResponse<T> {
 pub struct Workspace {
     pub uuid: String,
     pub slug: String,
-    pub name: String,
+    pub name: Option<String>,
+}
+
+/// Workspace membership entry from GET /2.0/user/workspaces
+#[derive(Debug, Deserialize)]
+pub struct WorkspaceMembership {
+    pub workspace: Workspace,
 }
 
 /// Bitbucket project (within a workspace)
